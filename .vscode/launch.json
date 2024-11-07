@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ROS: Launch",
+      "request": "launch",
+      "target": "/home/fcy/kaiyuan/ego-planner/src/planner/plan_manage/launch/simple_run.launch",
+      "launch": [
+        "rviz",
+        "gz",
+        "gzclient",
+        "gzserver"
+      ],
+      "type": "ros"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "cwd": "/home/fcy/kaiyuan/ego-planner/src/planner/plan_manage/src",
+      "program": "/home/fcy/kaiyuan/ego-planner/src/planner/plan_manage/src/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
