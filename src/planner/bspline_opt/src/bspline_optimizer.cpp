@@ -44,60 +44,63 @@ namespace ego_planner
       cps_.points = init_points;
     }
 
-    /*** Segment the initial trajectory according to obstacles ***/
-    constexpr int ENOUGH_INTERVAL = 2;
-    double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 2;
-    int in_id, out_id;
-    vector<std::pair<int, int>> segment_ids;
-    int same_occ_state_times = ENOUGH_INTERVAL + 1;
-    bool occ, last_occ = false;
-    bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
-    int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
-    for (int i = order_; i <= i_end; ++i)
+    /*** 根据障碍物对初始轨迹进行分段 ***/
+constexpr int ENOUGH_INTERVAL = 2; // 定义满足的间隔次数为2
+double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 2; 
+// 计算步长大小，用于在两点之间细分判断
+
+int in_id, out_id; // 定义起始和结束索引
+vector<std::pair<int, int>> segment_ids; // 保存分段的起止索引
+int same_occ_state_times = ENOUGH_INTERVAL + 1; // 用于记录相同占用状态的次数，初始值为ENOUGH_INTERVAL+1
+bool occ, last_occ = false; // 当前占用状态和上一次的占用状态
+bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false; // 标记找到起点、终点和可能的终点的状态
+
+// 仅检查点的前2/3段
+int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; 
+for (int i = order_; i <= i_end; ++i) // 遍历各点，排除头尾一些点
+{
+  for (double a = 1.0; a >= 0.0; a -= step_size) // 在每两个点之间插值检查
+  {
+    // 检查点a * init_points.col(i - 1) + (1 - a) * init_points.col(i)是否被障碍物占用
+    occ = grid_map_->getInflateOccupancy(a * init_points.col(i - 1) + (1 - a) * init_points.col(i));
+
+    if (occ && !last_occ) // 当前点被占用，而上一个点未被占用
     {
-      for (double a = 1.0; a >= 0.0; a -= step_size)
+      if (same_occ_state_times > ENOUGH_INTERVAL || i == order_) // 如果相同占用状态持续次数大于ENOUGH_INTERVAL，或这是第一个点
       {
-        occ = grid_map_->getInflateOccupancy(a * init_points.col(i - 1) + (1 - a) * init_points.col(i));
-        // cout << setprecision(5);
-        // cout << (a * init_points.col(i-1) + (1-a) * init_points.col(i)).transpose() << " occ1=" << occ << endl;
-
-        if (occ && !last_occ)
-        {
-          if (same_occ_state_times > ENOUGH_INTERVAL || i == order_)
-          {
-            in_id = i - 1;
-            flag_got_start = true;
-          }
-          same_occ_state_times = 0;
-          flag_got_end_maybe = false; // terminate in advance
-        }
-        else if (!occ && last_occ)
-        {
-          out_id = i;
-          flag_got_end_maybe = true;
-          same_occ_state_times = 0;
-        }
-        else
-        {
-          ++same_occ_state_times;
-        }
-
-        if (flag_got_end_maybe && (same_occ_state_times > ENOUGH_INTERVAL || (i == (int)init_points.cols() - order_)))
-        {
-          flag_got_end_maybe = false;
-          flag_got_end = true;
-        }
-
-        last_occ = occ;
-
-        if (flag_got_start && flag_got_end)
-        {
-          flag_got_start = false;
-          flag_got_end = false;
-          segment_ids.push_back(std::pair<int, int>(in_id, out_id));
-        }
+        in_id = i - 1; // 设置起点索引
+        flag_got_start = true; // 标记找到起点
       }
+      same_occ_state_times = 0; // 重置相同占用状态计数
+      flag_got_end_maybe = false; // 重置可能的终点标记
     }
+    else if (!occ && last_occ) // 当前点未被占用，但上一个点被占用
+    {
+      out_id = i; // 设置终点索引
+      flag_got_end_maybe = true; // 标记可能找到终点
+      same_occ_state_times = 0; // 重置相同占用状态计数
+    }
+    else
+    {
+      ++same_occ_state_times; // 增加相同占用状态计数
+    }
+
+    if (flag_got_end_maybe && (same_occ_state_times > ENOUGH_INTERVAL || (i == (int)init_points.cols() - order_)))
+    {
+      flag_got_end_maybe = false; // 重置可能的终点标记
+      flag_got_end = true; // 确认找到终点
+    }
+
+    last_occ = occ; // 更新上一个占用状态
+
+    if (flag_got_start && flag_got_end) // 如果找到起点和终点
+    {
+      flag_got_start = false; // 重置起点标记
+      flag_got_end = false; // 重置终点标记
+      segment_ids.push_back(std::pair<int, int>(in_id, out_id)); // 保存起点和终点索引
+    }
+  }
+}
 
     /*** a star search ***/
     vector<vector<Eigen::Vector3d>> a_star_pathes;
@@ -842,16 +845,23 @@ namespace ego_planner
     return false;
   }
 
-  bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts)
-  {
-    setBsplineInterval(ts);
+bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts) 
+{
+    setBsplineInterval(ts); 
+    // 设置B样条的时间间隔（时间步长），将参数 ts 传递给内部函数 setBsplineInterval
 
-    bool flag_success = rebound_optimize();
+    bool flag_success = rebound_optimize(); 
+    // 调用 rebound_optimize 函数执行实际的优化过程，并将结果存储在 flag_success 中
+    // 该标志指示优化是否成功
 
-    optimal_points = cps_.points;
+    optimal_points = cps_.points; 
+    // 将优化后的控制点坐标赋值给输出参数 optimal_points，以便在函数外部获得优化结果
+    // cps_ 是一个包含控制点数据的对象，其 points 成员变量存储了优化后的坐标矩阵
 
-    return flag_success;
-  }
+    return flag_success; 
+    // 返回优化是否成功的标志 flag_success
+}
+
 
   bool BsplineOptimizer::BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points)
   {
@@ -866,110 +876,106 @@ namespace ego_planner
     return flag_success;
   }
 
-  bool BsplineOptimizer::rebound_optimize()
-  {
-    iter_num_ = 0;
-    int start_id = order_;
-    int end_id = this->cps_.size - order_;
-    variable_num_ = 3 * (end_id - start_id);
-    double final_cost;
+bool BsplineOptimizer::rebound_optimize()
+{
+    iter_num_ = 0; // 初始化迭代次数为0
+    int start_id = order_; // 起始控制点索引，跳过头部的 `order_` 个点
+    int end_id = this->cps_.size - order_; // 结束控制点索引，跳过尾部的 `order_` 个点
+    variable_num_ = 3 * (end_id - start_id); // 要优化的变量数量，每个控制点包含3个维度（x, y, z）
+    double final_cost; // 用于存储优化后的最终成本值
 
-    ros::Time t0 = ros::Time::now(), t1, t2;
-    int restart_nums = 0, rebound_times = 0;
-    ;
-    bool flag_force_return, flag_occ, success;
-    new_lambda2_ = lambda2_;
-    constexpr int MAX_RESART_NUMS_SET = 3;
+    ros::Time t0 = ros::Time::now(), t1, t2; // 记录优化起始时间、过程时间和结束时间
+    int restart_nums = 0, rebound_times = 0; // 重启次数和反弹次数计数
+    bool flag_force_return, flag_occ, success; // 标记是否强制返回、是否碰撞、是否优化成功
+    new_lambda2_ = lambda2_; // 初始化新的lambda2值
+    constexpr int MAX_RESART_NUMS_SET = 3; // 设置最大重启次数
+
     do
     {
-      /* ---------- prepare ---------- */
-      min_cost_ = std::numeric_limits<double>::max();
-      iter_num_ = 0;
-      flag_force_return = false;
-      flag_occ = false;
-      success = false;
+        /* ---------- 准备优化 ---------- */
+        min_cost_ = std::numeric_limits<double>::max(); // 初始化最小成本为最大双精度值
+        iter_num_ = 0; // 重置迭代次数
+        flag_force_return = false; // 重置强制返回标记
+        flag_occ = false; // 重置碰撞标记
+        success = false; // 重置成功标记
 
-      double q[variable_num_];
-      memcpy(q, cps_.points.data() + 3 * start_id, variable_num_ * sizeof(q[0]));
+        double q[variable_num_]; // 创建一个数组存储要优化的变量
+        memcpy(q, cps_.points.data() + 3 * start_id, variable_num_ * sizeof(q[0])); 
+        // 复制控制点数据到 q 数组中，忽略前 start_id 个点
 
-      lbfgs::lbfgs_parameter_t lbfgs_params;
-      lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
-      lbfgs_params.mem_size = 16;
-      lbfgs_params.max_iterations = 200;
-      lbfgs_params.g_epsilon = 0.01;
+        lbfgs::lbfgs_parameter_t lbfgs_params; // 创建LBFGS优化参数对象
+        lbfgs::lbfgs_load_default_parameters(&lbfgs_params); // 加载默认的LBFGS参数
+        lbfgs_params.mem_size = 16; // 设置LBFGS内存大小
+        lbfgs_params.max_iterations = 200; // 设置最大迭代次数
+        lbfgs_params.g_epsilon = 0.01; // 设置梯度收敛条件
 
-      /* ---------- optimize ---------- */
-      t1 = ros::Time::now();
-      int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
-      t2 = ros::Time::now();
-      double time_ms = (t2 - t1).toSec() * 1000;
-      double total_time_ms = (t2 - t0).toSec() * 1000;
+        /* ---------- 进行优化 ---------- */
+        t1 = ros::Time::now(); // 记录优化开始时间
+        int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
+        // 使用LBFGS优化方法优化轨迹，返回优化结果状态码
+        t2 = ros::Time::now(); // 记录优化结束时间
+        double time_ms = (t2 - t1).toSec() * 1000; // 计算单次优化耗时（毫秒）
+        double total_time_ms = (t2 - t0).toSec() * 1000; // 计算总耗时（毫秒）
 
-      /* ---------- success temporary, check collision again ---------- */
-      if (result == lbfgs::LBFGS_CONVERGENCE ||
-          result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
-          result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
-          result == lbfgs::LBFGS_STOP)
-      {
-        //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
-        flag_force_return = false;
-
-        UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
-        double tm, tmp;
-        traj.getTimeSpan(tm, tmp);
-        double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
-        for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
+        /* ---------- 临时成功，重新检查碰撞 ---------- */
+        if (result == lbfgs::LBFGS_CONVERGENCE ||
+            result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+            result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+            result == lbfgs::LBFGS_STOP)
         {
-          flag_occ = grid_map_->getInflateOccupancy(traj.evaluateDeBoorT(t));
-          if (flag_occ)
-          {
-            //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
+            flag_force_return = false; // 优化成功，取消强制返回标记
 
-            if (t <= bspline_interval_) // First 3 control points in obstacles!
+            UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_); // 创建B样条轨迹
+            double tm, tmp; // 轨迹起止时间
+            traj.getTimeSpan(tm, tmp); // 获取轨迹时间跨度
+            double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
+            // 根据轨迹长度和网格地图分辨率计算步长
+            for (double t = tm; t < tmp * 2 / 3; t += t_step) // 只检查轨迹前2/3的部分
             {
-              cout << cps_.points.col(1).transpose() << "\n"
-                   << cps_.points.col(2).transpose() << "\n"
-                   << cps_.points.col(3).transpose() << "\n"
-                   << cps_.points.col(4).transpose() << endl;
-              ROS_WARN("First 3 control points in obstacles! return false, t=%f", t);
-              return false;
+                flag_occ = grid_map_->getInflateOccupancy(traj.evaluateDeBoorT(t)); // 检查轨迹上当前点是否被障碍物占用
+                if (flag_occ)
+                {
+                    if (t <= bspline_interval_) // 如果前3个控制点在障碍物内
+                    {
+                        ROS_WARN("First 3 control points in obstacles! return false, t=%f", t);
+                        return false; // 直接返回false
+                    }
+                    break;
+                }
             }
 
-            break;
-          }
-        }
+            if (!flag_occ) // 如果没有碰撞
+            {
+                printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
+                success = true; // 优化成功
+            }
+            else // 如果有碰撞，重启优化
+            {
+                restart_nums++; // 增加重启次数
+                initControlPoints(cps_.points, false); // 重新初始化控制点
+                new_lambda2_ *= 2; // 增加正则化参数
 
-        if (!flag_occ)
+                printf("\033[32miter(+1)=%d,time(ms)=%5.3f,keep optimizing\n\033[0m", iter_num_, time_ms);
+            }
+        }
+        else if (result == lbfgs::LBFGSERR_CANCELED) // 如果优化被中途取消
         {
-          printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
-          success = true;
+            flag_force_return = true; // 设置强制返回标记
+            rebound_times++; // 增加反弹次数
+            cout << "iter=" << iter_num_ << ",time(ms)=" << time_ms << ",rebound." << endl;
         }
-        else // restart
+        else // 其他错误情况
         {
-          restart_nums++;
-          initControlPoints(cps_.points, false);
-          new_lambda2_ *= 2;
-
-          printf("\033[32miter(+1)=%d,time(ms)=%5.3f,keep optimizing\n\033[0m", iter_num_, time_ms);
+            ROS_WARN("Solver error. Return = %d, %s. Skip this planning.", result, lbfgs::lbfgs_strerror(result));
+            // 输出错误信息，跳过该规划
         }
-      }
-      else if (result == lbfgs::LBFGSERR_CANCELED)
-      {
-        flag_force_return = true;
-        rebound_times++;
-        cout << "iter=" << iter_num_ << ",time(ms)=" << time_ms << ",rebound." << endl;
-      }
-      else
-      {
-        ROS_WARN("Solver error. Return = %d, %s. Skip this planning.", result, lbfgs::lbfgs_strerror(result));
-        // while (ros::ok());
-      }
 
-    } while ((flag_occ && restart_nums < MAX_RESART_NUMS_SET) ||
-             (flag_force_return && force_stop_type_ == STOP_FOR_REBOUND && rebound_times <= 20));
+    } while ((flag_occ && restart_nums < MAX_RESART_NUMS_SET) || // 如果有碰撞且重启次数未达到上限，继续优化
+             (flag_force_return && force_stop_type_ == STOP_FOR_REBOUND && rebound_times <= 20)); // 或在指定条件下允许一定次数的反弹
 
-    return success;
-  }
+    return success; // 返回优化结果
+}
+
 
   bool BsplineOptimizer::refine_optimize()
   {

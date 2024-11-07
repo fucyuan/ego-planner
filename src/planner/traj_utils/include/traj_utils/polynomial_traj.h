@@ -6,40 +6,46 @@
 
 using std::vector;
 
+// 多项式轨迹类
 class PolynomialTraj
 {
 private:
-  vector<double> times;       // time of each segment
-  vector<vector<double>> cxs; // coefficient of x of each segment, from n-1 -> 0
-  vector<vector<double>> cys; // coefficient of y of each segment
-  vector<vector<double>> czs; // coefficient of z of each segment
+  vector<double> times;       // 每段的时间
+  vector<vector<double>> cxs; // 每段的x方向系数，从n-1到0次
+  vector<vector<double>> cys; // 每段的y方向系数
+  vector<vector<double>> czs; // 每段的z方向系数
 
-  double time_sum;
-  int num_seg;
+  double time_sum; // 总时间
+  int num_seg;     // 段数
 
-  /* evaluation */
-  vector<Eigen::Vector3d> traj_vec3d;
-  double length;
+  /* 评估部分 */
+  vector<Eigen::Vector3d> traj_vec3d; // 轨迹的三维向量表示
+  double length; // 轨迹长度
 
 public:
+  // 构造函数
   PolynomialTraj(/* args */)
   {
   }
+  // 析构函数
   ~PolynomialTraj()
   {
   }
 
+  // 重置轨迹数据
   void reset()
   {
     times.clear(), cxs.clear(), cys.clear(), czs.clear();
     time_sum = 0.0, num_seg = 0;
   }
 
+  // 添加轨迹段
   void addSegment(vector<double> cx, vector<double> cy, vector<double> cz, double t)
   {
     cxs.push_back(cx), cys.push_back(cy), czs.push_back(cz), times.push_back(t);
   }
 
+  // 初始化轨迹
   void init()
   {
     num_seg = times.size();
@@ -50,11 +56,13 @@ public:
     }
   }
 
+  // 获取每段的时间
   vector<double> getTimes()
   {
     return times;
   }
 
+  // 获取某个轴的系数
   vector<vector<double>> getCoef(int axis)
   {
     switch (axis)
@@ -73,9 +81,10 @@ public:
     return empty;
   }
 
+  // 评估轨迹在时间t的位置信息
   Eigen::Vector3d evaluate(double t)
   {
-    /* detetrmine segment num */
+    /* 确定当前段号 */
     int idx = 0;
     while (times[idx] + 1e-4 < t)
     {
@@ -83,7 +92,7 @@ public:
       ++idx;
     }
 
-    /* evaluation */
+    /* 评估当前位置 */
     int order = cxs[idx].size();
     Eigen::VectorXd cx(order), cy(order), cz(order), tv(order);
     for (int i = 0; i < order; ++i)
@@ -97,9 +106,10 @@ public:
     return pt;
   }
 
+  // 评估轨迹在时间t的速度信息
   Eigen::Vector3d evaluateVel(double t)
   {
-    /* detetrmine segment num */
+    /* 确定当前段号 */
     int idx = 0;
     while (times[idx] + 1e-4 < t)
     {
@@ -107,11 +117,11 @@ public:
       ++idx;
     }
 
-    /* evaluation */
+    /* 评估当前速度 */
     int order = cxs[idx].size();
     Eigen::VectorXd vx(order - 1), vy(order - 1), vz(order - 1);
 
-    /* coef of vel */
+    /* 速度的系数 */
     for (int i = 0; i < order - 1; ++i)
     {
       vx(i) = double(i + 1) * cxs[idx][order - 2 - i];
@@ -128,9 +138,10 @@ public:
     return vel;
   }
 
+  // 评估轨迹在时间t的加速度信息
   Eigen::Vector3d evaluateAcc(double t)
   {
-    /* detetrmine segment num */
+    /* 确定当前段号 */
     int idx = 0;
     while (times[idx] + 1e-4 < t)
     {
@@ -138,11 +149,11 @@ public:
       ++idx;
     }
 
-    /* evaluation */
+    /* 评估当前加速度 */
     int order = cxs[idx].size();
     Eigen::VectorXd ax(order - 2), ay(order - 2), az(order - 2);
 
-    /* coef of vel */
+    /* 加速度的系数 */
     for (int i = 0; i < order - 2; ++i)
     {
       ax(i) = double((i + 2) * (i + 1)) * cxs[idx][order - 3 - i];
@@ -159,12 +170,13 @@ public:
     return acc;
   }
 
-  /* for evaluating traj, should be called in sequence!!! */
+  // 获取轨迹的总时间
   double getTimeSum()
   {
     return this->time_sum;
   }
 
+  // 获取轨迹的三维表示
   vector<Eigen::Vector3d> getTraj()
   {
     double eval_t = 0.0;
@@ -178,6 +190,7 @@ public:
     return traj_vec3d;
   }
 
+  // 获取轨迹的长度
   double getLength()
   {
     length = 0.0;
@@ -192,11 +205,13 @@ public:
     return length;
   }
 
+  // 获取平均速度
   double getMeanVel()
   {
     double mean_vel = length / time_sum;
   }
 
+  // 获取加速度成本
   double getAccCost()
   {
     double cost = 0.0;
@@ -212,15 +227,16 @@ public:
     return cost;
   }
 
+  // 获取轨迹的加加速度（jerk）
   double getJerk()
   {
     double jerk = 0.0;
 
-    /* evaluate jerk */
+    /* 评估加加速度 */
     for (int s = 0; s < times.size(); ++s)
     {
       Eigen::VectorXd cxv(cxs[s].size()), cyv(cys[s].size()), czv(czs[s].size());
-      /* convert coefficient */
+      /* 转换系数 */
       int order = cxs[s].size();
       for (int j = 0; j < order; ++j)
       {
@@ -228,7 +244,7 @@ public:
       }
       double ts = times[s];
 
-      /* jerk matrix */
+      /* 加加速度矩阵 */
       Eigen::MatrixXd mat_jerk(order, order);
       mat_jerk.setZero();
       for (double i = 3; i < order; i += 1)
@@ -246,6 +262,7 @@ public:
     return jerk;
   }
 
+  // 获取平均和最大速度
   void getMeanAndMaxVel(double &mean_v, double &max_v)
   {
     int num = 0;
@@ -255,7 +272,7 @@ public:
       int order = cxs[s].size();
       Eigen::VectorXd vx(order - 1), vy(order - 1), vz(order - 1);
 
-      /* coef of vel */
+      /* 速度的系数 */
       for (int i = 0; i < order - 1; ++i)
       {
         vx(i) = double(i + 1) * cxs[s][order - 2 - i];
@@ -285,6 +302,7 @@ public:
     mean_v = mean_v / double(num);
   }
 
+  // 获取平均和最大加速度
   void getMeanAndMaxAcc(double &mean_a, double &max_a)
   {
     int num = 0;
@@ -294,7 +312,7 @@ public:
       int order = cxs[s].size();
       Eigen::VectorXd ax(order - 2), ay(order - 2), az(order - 2);
 
-      /* coef of acc */
+      /* 加速度的系数 */
       for (int i = 0; i < order - 2; ++i)
       {
         ax(i) = double((i + 2) * (i + 1)) * cxs[s][order - 3 - i];
@@ -324,10 +342,12 @@ public:
     mean_a = mean_a / double(num);
   }
 
+  // 最小Snap轨迹生成函数
   static PolynomialTraj minSnapTraj(const Eigen::MatrixXd &Pos, const Eigen::Vector3d &start_vel,
                                     const Eigen::Vector3d &end_vel, const Eigen::Vector3d &start_acc,
                                     const Eigen::Vector3d &end_acc, const Eigen::VectorXd &Time);
 
+  // 单段轨迹生成函数
   static PolynomialTraj one_segment_traj_gen(const Eigen::Vector3d &start_pt, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
                                              const Eigen::Vector3d &end_pt, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc,
                                              double t);

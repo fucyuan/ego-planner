@@ -1,12 +1,14 @@
-# Note!
-Our recently developed planner [EGO-Swarm](https://github.com/ZJU-FAST-Lab/ego-planner-swarm) is an evolution from EGO-Planner. 
-It is more robust and safe, and therefore, is more recommended to use.
-If you have only one drone, just set the `drone_id` to `0` in EGO-Swarm's launch files.
-Of course, some topic names are changed from EGO-Planner, check it using `rqt_graph` and `rosnode info <package name>`.
+以下是你提供的README的中文翻译版本：
 
-# Quick Start within 3 Minutes 
-Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
-You can just execute the following commands one by one.
+# 注意！
+我们最近开发的规划器 [EGO-Swarm](https://github.com/ZJU-FAST-Lab/ego-planner-swarm) 是EGO-Planner的升级版本。它更为健壮和安全，因此我们推荐使用EGO-Swarm。
+如果你只有一架无人机，只需在EGO-Swarm的launch文件中将 `drone_id` 设置为 `0` 即可。
+当然，一些话题名称相较于EGO-Planner有所更改，你可以使用`rqt_graph`和`rosnode info <package name>`来检查。
+
+# 三分钟快速上手
+测试通过的编译环境包括安装了ROS的Ubuntu **16.04、18.04 和 20.04**。
+你只需要按顺序执行以下命令：
+
 ```
 sudo apt-get install libarmadillo-dev
 git clone https://github.com/ZJU-FAST-Lab/ego-planner.git
@@ -15,190 +17,183 @@ catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
-If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego-planner](https://gitee.com/iszhouxin/ego-planner). They synchronize automatically.
 
-If you find this work useful or interesting, please kindly give us a star :star:, thanks!:grinning:
+如果你的网络访问GitHub较慢，建议使用Gitee镜像库：[https://gitee.com/iszhouxin/ego-planner](https://gitee.com/iszhouxin/ego-planner)，它们会自动同步。
 
-# Acknowledgements
-- The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quadrotor local planning.
+如果你觉得这个项目对你有帮助，请给我们一个星星 :star:，谢谢！:grinning:
 
-- The L-BFGS solver we use is from [LBFGS-Lite](https://github.com/ZJU-FAST-Lab/LBFGS-Lite). 
-It is a C++ head-only single file, which is lightweight and easy to use.
-
-- The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by William Wu.
-
-- The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
+# 致谢
+- 本仓库的框架基于 [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner)，由周博瑜开发，取得了在四旋翼局部规划方面的优秀表现。
+- 我们使用的L-BFGS求解器来自 [LBFGS-Lite](https://github.com/ZJU-FAST-Lab/LBFGS-Lite)。它是一个轻量级的C++单文件头文件，易于使用。
+- 仿真中生成的地图来自 [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap)，由吴威廉开发。
+- 硬件架构基于 [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan) 的开源实现。
 
 # EGO-Planner 
-EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
+EGO-Planner: 一种无需ESDF的基于梯度的四旋翼局部规划器
 
-**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->. The total planning time is only **around 1ms** and don't need to compute ESDF.
+**EGO-Planner** 是一种轻量级的基于梯度的局部规划器，不需要ESDF构建，与某些最先进的方法相比（如EWOK和Fast-Planner），显著减少了计算时间。总规划时间仅为 **约1毫秒**，且无需计算ESDF。
 
-<p align = "center">
-<img src="pictures/title.gif" width = "413" height = "232" border="5" />
-<img src="pictures/comp.jpg" width = "413" height = "232" border="5" />
-<img src="pictures/indoor.gif" width = "413" height = "232" border="5" />
-<img src="pictures/outdoor.gif" width = "413" height = "232" border="5" />
+<p align="center">
+<img src="pictures/title.gif" width="413" height="232" border="5" />
+<img src="pictures/comp.jpg" width="413" height="232" border="5" />
+<img src="pictures/indoor.gif" width="413" height="232" border="5" />
+<img src="pictures/outdoor.gif" width="413" height="232" border="5" />
 </p>
 
-**Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
+**视频链接：** [YouTube](https://youtu.be/UKoaGW7t7Dk)，[哔哩哔哩](https://www.bilibili.com/video/BV1VC4y1t7F4/) （适用于中国大陆）
 
-## 1. Related Paper
-EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors, Xin Zhou, Zhepei Wang, Chao Xu and Fei Gao (Accepted by RA-L). [arXiv Preprint](https://arxiv.org/abs/2008.08835), [IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/9309347), and [IEEE Spectrum report](https://spectrum.ieee.org/automaton/robotics/robotics-hardware/video-friday-mit-media-lab-tf8-bionic-ankle).
+## 1. 相关论文
+EGO-Planner: 一种无需ESDF的基于梯度的四旋翼局部规划器，作者：周鑫，王哲培，徐超，高飞 (被RA-L接收)。 [arXiv预印本](https://arxiv.org/abs/2008.08835)，[IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/9309347)，和 [IEEE Spectrum报告](https://spectrum.ieee.org/automaton/robotics/robotics-hardware/video-friday-mit-media-lab-tf8-bionic-ankle)。
 
-## 2. Standard Compilation
+## 2. 标准编译
 
-**Requirements**: ubuntu 16.04, 18.04 or 20.04 with ros-desktop-full installation.
+**要求：** ubuntu 16.04、18.04或20.04，安装有ros-desktop-full。
 
-**Step 1**. Install [Armadillo](http://arma.sourceforge.net/), which is required by **uav_simulator**.
+**步骤1**. 安装 [Armadillo](http://arma.sourceforge.net/)，它是 **uav_simulator** 所需的依赖库。
 ```
 sudo apt-get install libarmadillo-dev
-``` 
+```
 
-**Step 2**. Clone the code from github or gitee. This two repositories synchronize automaticly.
+**步骤2**. 从GitHub或Gitee克隆代码。这两个仓库会自动同步。
 
-From github,
+从GitHub克隆：
 ```
 git clone https://github.com/ZJU-FAST-Lab/ego-planner.git
 ```
 
-Or from gitee,
+或者从Gitee克隆：
 ```
 git clone https://gitee.com/iszhouxin/ego-planner.git
 ```
 
-**Step 3**. Compile,
+**步骤3**. 编译：
 ```
 cd ego-planner
 catkin_make -DCMAKE_BUILD_TYPE=Release
 ```
 
-**Step 4**. Run.
+**步骤4**. 运行。
 
-In a terminal at the _ego-planner/_ folder, open the rviz for visuallization and interactions
+在 _ego-planner/_ 文件夹中打开终端，使用rviz进行可视化和交互：
 ```
 source devel/setup.bash
 roslaunch ego_planner rviz.launch
 ```
 
-In another terminal at the _ego-planner/_, run the planner in simulation by
+在另一个终端中，在 _ego-planner/_ 目录下运行仿真中的规划器：
 ```
 source devel/setup.bash
 roslaunch ego_planner run_in_sim.launch
 ```
 
-Then you can follow the gif below to control the drone.
+然后你可以按照下方的动图控制无人机。
 
-<p align = "center">
-<img src="pictures/sim_demo.gif" width = "640" height = "438" border="5" />
+<p align="center">
+<img src="pictures/sim_demo.gif" width="640" height="438" border="5" />
 </p>
 
-## 3. Using an IDE
-We recommend using [vscode](https://code.visualstudio.com/), the project file has been included in the code you have cloned, which is the _.vscode_ folder.
-This folder is **hidden** by default.
-Follow the steps below to configure the IDE for auto code completion & jump.
-It will take 3 minutes.
+## 3. 使用集成开发环境 (IDE)
+我们推荐使用 [vscode](https://code.visualstudio.com/)，项目文件已包含在代码中，即 _.vscode_ 文件夹。该文件夹默认是 **隐藏的**。
 
-**Step 1**. Install C++ and CMake extentions in vscode.
+按照以下步骤为IDE配置自动代码补全和跳转功能。整个过程大约需要3分钟。
 
-**Step 2**. Re-compile the code using command
+**步骤1**. 在vscode中安装C++和CMake扩展。
+
+**步骤2**. 使用以下命令重新编译代码：
 ```
 catkin_make -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=Yes
 ```
-It will export a compile commands file, which can help vscode to determine the code architecture.
+这将导出一个编译命令文件，帮助vscode识别代码结构。
 
-**Step 3**. Launch vscode and select the _ego-planner_ folder to open.
+**步骤3**. 启动vscode并选择 _ego-planner_ 文件夹打开：
 ```
 code ~/<......>/ego-planner/
 ```
 
-Press **Ctrl+Shift+B** in vscode to compile the code. This command is defined in _.vscode/tasks.json_.
-You can add customized arguments after **"args"**. The default is **"-DCMAKE_BUILD_TYPE=Release"**.
+在vscode中按 **Ctrl+Shift+B** 编译代码。这个命令已在 _.vscode/tasks.json_ 中定义。你可以在 **"args"** 后添加自定义参数。默认是 **"-DCMAKE_BUILD_TYPE=Release"**。
 
-**Step 4**. Close and re-launch vscode, you will see the vscode has already understood the code architecture and can perform auto completion & jump.
+**步骤4**. 关闭并重新启动vscode，你将看到vscode已经理解了代码结构，并能执行自动补全和跳转。
 
- ## 4. Use GPU or Not
- Packages in this repo, **local_sensing** have GPU, CPU two different versions. By default, they are in CPU version for better compatibility. By changing
- 
- ```
- set(ENABLE_CUDA false)
- ```
- 
- in the _CMakeList.txt_ in **local_sensing** packages, to
- 
- ```
- set(ENABLE_CUDA true)
- ```
- 
-CUDA will be turned-on to generate depth images as a real depth camera does. 
+## 4. 使用GPU或不使用GPU
+本仓库中的 **local_sensing** 包提供了GPU和CPU两个不同版本。默认情况下使用CPU版本，以提高兼容性。通过修改 **local_sensing** 包中的 _CMakeList.txt_ 文件可以切换：
 
-Please remember to also change the 'arch' and 'code' flags in the line of 
+将
 ```
-    set(CUDA_NVCC_FLAGS 
-      -gencode arch=compute_61,code=sm_61;
-    ) 
-``` 
-in _CMakeList.txt_. If you encounter compiling error due to different Nvidia graphics card you use or you can not see proper depth images as expected, you can check the right code via [link1](https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/) or [link2](https://github.com/tpruvot/ccminer/wiki/Compatibility).
- 
-Don't forget to re-compile the code!
+set(ENABLE_CUDA false)
+```
+改为
+```
+set(ENABLE_CUDA true)
+```
+将启用CUDA来生成深度图像，如同真实深度相机一样。
 
-**local_sensing** is the simulated sensors. If ```ENABLE_CUDA``` **true**, it mimics the depth measured by stereo cameras and renders a depth image by GPU. If ```ENABLE_CUDA``` **false**, it will publish pointclouds with no ray-casting. Our local mapping module automatically selects whether depth images or pointclouds as its input.
+请记得修改以下代码中的`arch`和`code`标志：
+```
+set(CUDA_NVCC_FLAGS 
+    -gencode arch=compute_61,code=sm_61;
+)
+```
+如果你使用的Nvidia显卡型号不同，可能会遇到编译错误或者无法正确生成深度图像，可以通过以下链接查看正确的`code`参数：[link1](https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/) 或 [link2](https://github.com/tpruvot/ccminer/wiki/Compatibility)。
 
-For installation of CUDA, please go to [CUDA ToolKit](https://developer.nvidia.com/cuda-toolkit)
+别忘了重新编译代码！
 
-## 5. Utilize the Full Performance of CPU
-The computation time of our planner is too short for the OS to increase CPU frequency, which makes the computation time tend to be longer and unstable.
+**local_sensing** 是模拟的传感器。如果 `ENABLE_CUDA` 设置为 **true**，它将模拟通过GPU生成的立体相机深度测量。如果 `ENABLE_CUDA` 为 **false**，它将发布点云而不进行光线投射。我们的局部映射模块会自动选择深度图像或点云作为输入。
 
-Therefore, we recommend you to manually set the CPU frequency to the maximum.
-Firstly, install a tool by
+安装CUDA的更多信息请参考 [CUDA ToolKit](https://developer.nvidia.com/cuda-toolkit)。
+
+## 5. 充分利用CPU性能
+由于我们的规划器计算时间极短，操作系统可能无法及时提升CPU频率，导致计算时间延长且不稳定。
+
+因此，我们建议手动将CPU频率设置为最高。首先安装工具：
 ```
 sudo apt install cpufrequtils
 ```
-Then you can set the CPU frequency to the maximum allowed by
+然后将CPU频率设置为最大：
 ```
 sudo cpufreq-set -g performance
 ```
-More information can be found in [http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils](http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils).
+更多信息请参考：[http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils](http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils)。
 
-Note that CPU frequency may still decrease due to high temperature in high load.
+注意，高负载下CPU频率可能仍会因温度过高而降低。
 
-# Improved ROS-RealSense Driver
+# 改进的ROS-RealSense驱动
+我们修改了ros-realsense驱动，启用了激光发射器每隔一帧闪烁功能，使设备能够借助发射器输出高质量的深度图像，同时提供不受激光干扰
 
-We modified the ros-relasense driver to enable the laser emitter strobe every other frame, allowing the device to output high quality depth images with the help of emitter, and along with binocular images free from laser interference.
+的双目图像。
 
-<p align = "center">
-<img src="pictures/realsense.PNG" width = "640" height = "158" border="5" />
+<p align="center">
+<img src="pictures/realsense.PNG" width="640" height="158" border="5" />
 </p>
 
-This ros-driver is modified from [https://github.com/IntelRealSense/realsense-ros](https://github.com/IntelRealSense/realsense-ros) and is compatible with librealsense2 2.30.0.
-Tests are performed on Intel RealSense D435 and D435i.
+这个ros驱动修改自 [https://github.com/IntelRealSense/realsense-ros](https://github.com/IntelRealSense/realsense-ros)，与librealsense2 2.30.0兼容。测试在Intel RealSense D435和D435i上进行。
 
-Parameter ```emitter_on_off``` is to turn on/off the added function.
-Note that if this function is turned on, the output frame rate from the device will be reduced to half of the frame rate you set, since the device uses half of the stream for depth estimation and the other half as binocular grayscale outputs.
-What's more, parameters ```depth_fps``` and ```infra_fps``` must be identical, and ```enable_emitter``` must be true as well under this setting.
+参数 `emitter_on_off` 用于开启/关闭此功能。请注意，开启此功能时，设备的输出帧率将减半，因为设备使用一半的流进行深度估计，另一半输出为双目灰度图。此外，参数 `depth_fps` 和 `infra_fps` 必须一致，且 `enable_emitter` 也必须设置为true。
 
-##  Install
+## 安装
+librealsense2 2.30.0的驱动需要明确安装。在x86 CPU上，安装过程非常简单，仅需5分钟。
 
-The driver of librealsense2 2.30.0 should be installed explicitly.
-On a x86 CPU, this can be performed easily within 5 minutes.
-Firstly, remove the currently installed driver by 
+首先，移除当前安装的驱动：
 ```
 sudo apt remove librealsense2-utils
 ```
-or manually remove the files if you have installed the librealsense from source.
-Then, you can install the library of version 2.30.0 by
+或者如果你从源代码安装了librealsense，可以手动移除相应文件。
+
+然后，可以安装2.30.0版本的库：
 ```
 sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
 ```
-For ubuntu 16.04
+
+对于Ubuntu 16.04：
 ```
 sudo add-apt-repository "deb http://realsense-hw-public.s3.amazonaws.com/Debian/apt-repo xenial main" -u
 ```
-For ubuntu 18.04
+
+对于Ubuntu 18.04：
 ```
 sudo add-apt-repository "deb http://realsense-hw-public.s3.amazonaws.com/Debian/apt-repo bionic main" -u
 ```
-Then continue with
+
+接着安装：
 ```
 sudo apt-get install librealsense2-dkms
 sudo apt install librealsense2=2.30.0-0~realsense0.1693
@@ -207,39 +202,27 @@ sudo apt install librealsense2-utils=2.30.0-0~realsense0.1693
 sudo apt install librealsense2-dev=2.30.0-0~realsense0.1693
 sudo apt remove librealsense2-udev-rules
 sudo apt install librealsense2-udev-rules=2.30.0-0~realsense0.1693
-``` 
-Here you can varify the installation by 
+```
+
+你可以通过以下命令验证安装：
 ```
 realsense-viewer
 ```
 
-##  Run
-
-If everything looks well, you can now compile the ros-realsense package named _modified_realsense2_camera.zip_ by ```catkin_make```, then run ros realsense node by 
+## 运行
+如果一切正常，你可以使用`catkin_make`编译ros-realsense包 _modified_realsense2_camera.zip_，然后运行ros realsense节点：
 ```
 roslaunch realsense_camera rs_camera.launch
 ```
-Then you will receive depth stream along with binocular stream together at 30Hz by default.
 
-<!--
-# A Lightweight Quadrotor Simulator
+然后你会以默认30Hz的速度接收深度流和双目流。
 
-The quadrotor simulator we use is inherited and modified from [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner). 
-It is lightweight and super easy to use.
-Only one topic is required to control the drone.
-You can execute 
-```
-roslaunch so3_quadrotor_simulator simulator_example.launch 
-```
-to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control_example.cpp.
-If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.-->
+# 许可证
+源代码依据 [GPLv3](http://www.gnu.org/licenses/) 许可证发布。
 
-# Licence
-The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
+# 维护
+我们仍在不断扩展系统功能和提高代码可靠性。
 
-# Maintaince
-We are still working on extending the proposed system and improving code reliability. 
+如有任何技术问题，请联系周鑫 (iszhouxin@zju.edu.cn) 或高飞 (fgaoaa@zju.edu.cn)。
 
-For any technical issues, please contact Xin Zhou (iszhouxin@zju.edu.cn) or Fei GAO (fgaoaa@zju.edu.cn).
-
-For commercial inquiries, please contact Fei GAO (fgaoaa@zju.edu.cn).
+如有商业合作需求，请联系高飞 (fgaoaa@zju.edu.cn)。

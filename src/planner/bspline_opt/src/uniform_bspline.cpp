@@ -4,42 +4,45 @@
 namespace ego_planner
 {
 
-  UniformBspline::UniformBspline(const Eigen::MatrixXd &points, const int &order,
-                                 const double &interval)
-  {
-    setUniformBspline(points, order, interval);
-  }
+UniformBspline::UniformBspline(const Eigen::MatrixXd &points, const int &order, const double &interval)
+{
+    setUniformBspline(points, order, interval); 
+    // 调用 setUniformBspline 函数来初始化 B 样条的控制点、阶数和时间间隔
+}
 
-  UniformBspline::~UniformBspline() {}
+UniformBspline::~UniformBspline() {} 
+// 析构函数，默认析构（无任何特殊操作）
 
-  void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order,
-                                         const double &interval)
-  {
-    control_points_ = points;
-    p_ = order;
-    interval_ = interval;
+void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order, const double &interval)
+{
+    control_points_ = points; // 将输入的控制点矩阵 points 赋值给类的成员变量 control_points_
+    p_ = order; // 将阶数 order 赋值给成员变量 p_
+    interval_ = interval; // 将时间间隔 interval 赋值给成员变量 interval_
 
-    n_ = points.cols() - 1;
-    m_ = n_ + p_ + 1;
+    n_ = points.cols() - 1; // 计算控制点数量减一，并赋值给成员变量 n_
+    m_ = n_ + p_ + 1; // 计算节点向量的最后一个索引 m，赋值给成员变量 m_
 
-    u_ = Eigen::VectorXd::Zero(m_ + 1);
-    for (int i = 0; i <= m_; ++i)
+    u_ = Eigen::VectorXd::Zero(m_ + 1); // 初始化节点向量 u_ 为零向量，长度为 m_ + 1
+    for (int i = 0; i <= m_; ++i) // 遍历节点向量的所有元素
     {
-
-      if (i <= p_)
-      {
-        u_(i) = double(-p_ + i) * interval_;
-      }
-      else if (i > p_ && i <= m_ - p_)
-      {
-        u_(i) = u_(i - 1) + interval_;
-      }
-      else if (i > m_ - p_)
-      {
-        u_(i) = u_(i - 1) + interval_;
-      }
+        if (i <= p_) // 如果当前索引 i 小于等于阶数 p
+        {
+            u_(i) = double(-p_ + i) * interval_; 
+            // 为前 p+1 个节点赋值为负数，表示从负方向逐步增加的间隔（用于平滑起始部分）
+        }
+        else if (i > p_ && i <= m_ - p_) // 如果当前索引在中间范围
+        {
+            u_(i) = u_(i - 1) + interval_; 
+            // 按照固定时间间隔逐渐增加节点值
+        }
+        else if (i > m_ - p_) // 如果当前索引大于 m - p，即位于末尾部分
+        {
+            u_(i) = u_(i - 1) + interval_; 
+            // 为后 p+1 个节点赋值，使得末尾的节点值保持一致（用于平滑终点部分）
+        }
     }
-  }
+}
+
 
   void UniformBspline::setKnot(const Eigen::VectorXd &knot) { this->u_ = knot; }
 
@@ -133,65 +136,70 @@ namespace ego_planner
     feasibility_tolerance_ = tolerance;
   }
 
-  bool UniformBspline::checkFeasibility(double &ratio, bool show)
-  {
-    bool fea = true;
+bool UniformBspline::checkFeasibility(double &ratio, bool show)
+{
+    bool fea = true; // 初始化可行性标记，假设轨迹可行
 
-    Eigen::MatrixXd P = control_points_;
-    int dimension = control_points_.rows();
+    Eigen::MatrixXd P = control_points_; // 将控制点矩阵赋值给局部变量 P
+    int dimension = control_points_.rows(); // 获取控制点的维度（通常是 2D 或 3D）
 
-    /* check vel feasibility and insert points */
-    double max_vel = -1.0;
-    double enlarged_vel_lim = limit_vel_ * (1.0 + feasibility_tolerance_) + 1e-4;
-    for (int i = 0; i < P.cols() - 1; ++i)
+    /* 检查速度可行性并插入点 */
+    double max_vel = -1.0; // 最大速度初始值
+    double enlarged_vel_lim = limit_vel_ * (1.0 + feasibility_tolerance_) + 1e-4; 
+    // 计算放宽后的速度限制，增加一个微小值 1e-4 以避免边界问题
+
+    for (int i = 0; i < P.cols() - 1; ++i) // 遍历所有控制点之间的段
     {
-      Eigen::VectorXd vel = p_ * (P.col(i + 1) - P.col(i)) / (u_(i + p_ + 1) - u_(i + 1));
+        // 计算第 i 段的速度向量
+        Eigen::VectorXd vel = p_ * (P.col(i + 1) - P.col(i)) / (u_(i + p_ + 1) - u_(i + 1));
 
-      if (fabs(vel(0)) > enlarged_vel_lim || fabs(vel(1)) > enlarged_vel_lim ||
-          fabs(vel(2)) > enlarged_vel_lim)
-      {
-
-        if (show)
-          cout << "[Check]: Infeasible vel " << i << " :" << vel.transpose() << endl;
-        fea = false;
-
-        for (int j = 0; j < dimension; ++j)
+        // 检查速度在各维度是否超过限制
+        if (fabs(vel(0)) > enlarged_vel_lim || fabs(vel(1)) > enlarged_vel_lim || fabs(vel(2)) > enlarged_vel_lim)
         {
-          max_vel = max(max_vel, fabs(vel(j)));
+            if (show) // 如果 `show` 为真，输出不可行的速度信息
+                cout << "[Check]: Infeasible vel " << i << " :" << vel.transpose() << endl;
+            fea = false; // 将可行性标记设置为 false
+
+            for (int j = 0; j < dimension; ++j)
+            {
+                max_vel = max(max_vel, fabs(vel(j))); // 更新最大速度
+            }
         }
-      }
     }
 
-    /* acc feasibility */
-    double max_acc = -1.0;
-    double enlarged_acc_lim = limit_acc_ * (1.0 + feasibility_tolerance_) + 1e-4;
-    for (int i = 0; i < P.cols() - 2; ++i)
-    {
+    /* 检查加速度可行性 */
+    double max_acc = -1.0; // 最大加速度初始值
+    double enlarged_acc_lim = limit_acc_ * (1.0 + feasibility_tolerance_) + 1e-4; 
+    // 计算放宽后的加速度限制
 
-      Eigen::VectorXd acc = p_ * (p_ - 1) *
+    for (int i = 0; i < P.cols() - 2; ++i) // 遍历所有控制点之间的加速度段
+    {
+        // 计算第 i 段的加速度向量
+        Eigen::VectorXd acc = p_ * (p_ - 1) *
                             ((P.col(i + 2) - P.col(i + 1)) / (u_(i + p_ + 2) - u_(i + 2)) -
                              (P.col(i + 1) - P.col(i)) / (u_(i + p_ + 1) - u_(i + 1))) /
                             (u_(i + p_ + 1) - u_(i + 2));
 
-      if (fabs(acc(0)) > enlarged_acc_lim || fabs(acc(1)) > enlarged_acc_lim ||
-          fabs(acc(2)) > enlarged_acc_lim)
-      {
-
-        if (show)
-          cout << "[Check]: Infeasible acc " << i << " :" << acc.transpose() << endl;
-        fea = false;
-
-        for (int j = 0; j < dimension; ++j)
+        // 检查加速度在各维度是否超过限制
+        if (fabs(acc(0)) > enlarged_acc_lim || fabs(acc(1)) > enlarged_acc_lim || fabs(acc(2)) > enlarged_acc_lim)
         {
-          max_acc = max(max_acc, fabs(acc(j)));
+            if (show) // 如果 `show` 为真，输出不可行的加速度信息
+                cout << "[Check]: Infeasible acc " << i << " :" << acc.transpose() << endl;
+            fea = false; // 将可行性标记设置为 false
+
+            for (int j = 0; j < dimension; ++j)
+            {
+                max_acc = max(max_acc, fabs(acc(j))); // 更新最大加速度
+            }
         }
-      }
     }
 
+    // 计算速度和加速度超限的比率，取最大值
     ratio = max(max_vel / limit_vel_, sqrt(fabs(max_acc) / limit_acc_));
 
-    return fea;
-  }
+    return fea; // 返回是否可行的标记
+}
+
 
   void UniformBspline::lengthenTime(const double &ratio)
   {
@@ -206,52 +214,61 @@ namespace ego_planner
       u_(i) += delta_t;
   }
 
-  // void UniformBspline::recomputeInit() {}
 
-  void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
-                                             const vector<Eigen::Vector3d> &start_end_derivative,
-                                             Eigen::MatrixXd &ctrl_pts)
-  {
+void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
+                                           const vector<Eigen::Vector3d> &start_end_derivative,
+                                           Eigen::MatrixXd &ctrl_pts)
+{
+    // 如果时间步长ts小于等于0，输出时间步长错误提示并返回
     if (ts <= 0)
     {
-      cout << "[B-spline]:time step error." << endl;
-      return;
+        cout << "[B-spline]:time step error." << endl;
+        return;
     }
 
+    // 如果点集的大小小于等于3，输出点集大小错误提示并返回
     if (point_set.size() <= 3)
     {
-      cout << "[B-spline]:point set have only " << point_set.size() << " points." << endl;
-      return;
+        cout << "[B-spline]:point set have only " << point_set.size() << " points." << endl;
+        return;
     }
 
+    // 如果起点和终点导数的数量不等于4，输出导数错误提示
     if (start_end_derivative.size() != 4)
     {
-      cout << "[B-spline]:derivatives error." << endl;
+        cout << "[B-spline]:derivatives error." << endl;
     }
 
-    int K = point_set.size();
+    int K = point_set.size(); // K为点集的大小
 
-    // write A
+    // 定义矩阵A中的行向量，用于描述B样条的系数
     Eigen::Vector3d prow(3), vrow(3), arow(3);
-    prow << 1, 4, 1;
-    vrow << -1, 0, 1;
-    arow << 1, -2, 1;
+    prow << 1, 4, 1;    // 用于位置的系数行
+    vrow << -1, 0, 1;   // 用于速度的系数行
+    arow << 1, -2, 1;   // 用于加速度的系数行
 
+    // 初始化矩阵A为K+4行K+2列的零矩阵，表示B样条的系数矩阵
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(K + 4, K + 2);
 
+    // 填充矩阵A的前K行，逐行插入B样条位置的系数
     for (int i = 0; i < K; ++i)
-      A.block(i, i, 1, 3) = (1 / 6.0) * prow.transpose();
+        A.block(i, i, 1, 3) = (1 / 6.0) * prow.transpose();
 
+    // 填充矩阵A的第K行和第K+1行，用于起始点和终点的速度
     A.block(K, 0, 1, 3) = (1 / 2.0 / ts) * vrow.transpose();
     A.block(K + 1, K - 1, 1, 3) = (1 / 2.0 / ts) * vrow.transpose();
 
+    // 填充矩阵A的第K+2行和第K+3行，用于起始点和终点的加速度
     A.block(K + 2, 0, 1, 3) = (1 / ts / ts) * arow.transpose();
     A.block(K + 3, K - 1, 1, 3) = (1 / ts / ts) * arow.transpose();
 
+    // 输出调试信息，显示矩阵A
     //cout << "A" << endl << A << endl << endl;
 
-    // write b
+    // 定义b向量，存储x, y, z三个方向上的位移、速度和加速度的约束
     Eigen::VectorXd bx(K + 4), by(K + 4), bz(K + 4);
+
+    // 将点集中的每个点的x, y, z坐标分别赋值到bx, by, bz中
     for (int i = 0; i < K; ++i)
     {
       bx(i) = point_set[i](0);
@@ -259,6 +276,7 @@ namespace ego_planner
       bz(i) = point_set[i](2);
     }
 
+ //将起点和终点导数的x, y, z值分别赋值到bx, by, bz的末尾部分
     for (int i = 0; i < 4; ++i)
     {
       bx(K + i) = start_end_derivative[i](0);
@@ -266,19 +284,20 @@ namespace ego_planner
       bz(K + i) = start_end_derivative[i](2);
     }
 
-    // solve Ax = b
+    // 使用QR分解求解，分别解出x, y, z方向的控制点
     Eigen::VectorXd px = A.colPivHouseholderQr().solve(bx);
     Eigen::VectorXd py = A.colPivHouseholderQr().solve(by);
     Eigen::VectorXd pz = A.colPivHouseholderQr().solve(bz);
 
-    // convert to control pts
+    // 将求解出的x, y, z方向的控制点转置后存储到控制点矩阵ctrl_pts中
     ctrl_pts.resize(3, K + 2);
     ctrl_pts.row(0) = px.transpose();
     ctrl_pts.row(1) = py.transpose();
     ctrl_pts.row(2) = pz.transpose();
 
-    // cout << "[B-spline]: parameterization ok." << endl;
-  }
+    // 输出提示，表明B样条参数化完成
+    cout << "[B-spline]: parameterization ok." << endl;
+}
 
   double UniformBspline::getTimeSum()
   {
