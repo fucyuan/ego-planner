@@ -1,10 +1,15 @@
-int32 order
-int64 traj_id
-time start_time
+int32 order                  # 样条曲线的阶数，例如3表示三次样条，决定样条曲线的平滑程度和每段的多项式次数
 
-float64[] knots
-geometry_msgs/Point[] pos_pts
+int64 traj_id                # 轨迹的唯一标识符，用于识别轨迹或者进行轨迹更新，适合需要区分多个轨迹的场景
 
-float64[] yaw_pts
-float64 yaw_dt
+time start_time              # 轨迹的起始时间，表示该轨迹计划开始执行的时间点，可以用来同步时间或计算时间偏移
+
+float64[] knots              # B样条曲线的节点向量（打结向量），定义了样条的分段结构，是确定样条形状的重要参数
+
+geometry_msgs/Point[] pos_pts # B样条控制点的坐标序列，每个点表示一个空间位置，用于定义样条曲线的形状
+
+float64[] yaw_pts            # 轨迹的偏航角序列（单位：弧度），用于定义沿轨迹的方向变化，每个角度与控制点对应
+
+float64 yaw_dt               # 偏航角的时间间隔，表示每个偏航角之间的时间步长，用来平滑地控制物体的朝向
+
 

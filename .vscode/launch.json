@@ -20,8 +20,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/fcy/kaiyuan/ego-planner/src/planner/plan_manage/src",
-      "program": "/home/fcy/kaiyuan/ego-planner/src/planner/plan_manage/src/build/Debug/outDebug",
+      "cwd": "/home/fcy/kaiyuan/ego-planner/src/planner/traj_utils/src",
+      "program": "/home/fcy/kaiyuan/ego-planner/src/planner/traj_utils/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "/usr/bin/gdb",
       "setupCommands": [

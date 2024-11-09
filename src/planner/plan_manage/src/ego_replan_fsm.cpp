@@ -418,53 +418,59 @@ namespace ego_planner
     }
   }
 
-  // 调用重新规划
-  bool EGOReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
-  {
+// 调用重新规划
+bool EGOReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
+{
     getLocalTarget(); // 获取局部目标
     // flag_randomPolyTraj=true
   
+    // 调用重新规划函数 reboundReplan，传入起始点、速度、加速度、局部目标点、局部目标速度以及标志位
     bool plan_success =
         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
-    have_new_target_ = false;
+    have_new_target_ = false; // 规划完成后重置 have_new_target_ 为 false
 
-    cout << "final_plan_success=" << plan_success << endl;
+    // cout << "final_plan_success=" << plan_success << endl; // 输出最终规划是否成功
+    ROS_WARN("final_plan_success=%s", plan_success ? "true" : "false"); // 输出最终规划是否成功
 
-    if (plan_success)
+
+    if (plan_success) // 如果规划成功
     {
-      auto info = &planner_manager_->local_data_;
+        auto info = &planner_manager_->local_data_; // 获取规划器的本地数据
 
-      /* 发布轨迹 */
-      ego_planner::Bspline bspline;
-      bspline.order = 3;
-      bspline.start_time = info->start_time_;
-      bspline.traj_id = info->traj_id_;
+        /* 发布轨迹 */
+        ego_planner::Bspline bspline;//自定义消息
+        bspline.order = 3; // 设置B样条的阶数为3
+        bspline.start_time = info->start_time_; // 设置B样条的开始时间
+        bspline.traj_id = info->traj_id_; // 设置B样条的轨迹ID
 
-      Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
-      bspline.pos_pts.reserve(pos_pts.cols());
-      for (int i = 0; i < pos_pts.cols(); ++i)
-      {
-        geometry_msgs::Point pt;
-        pt.x = pos_pts(0, i);
-        pt.y = pos_pts(1, i);
-        pt.z = pos_pts(2, i);
-        bspline.pos_pts.push_back(pt);
-      }
+        // 获取控制点并将其转换为ROS消息格式
+        Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
+        bspline.pos_pts.reserve(pos_pts.cols());
+        for (int i = 0; i < pos_pts.cols(); ++i)
+        {
+            geometry_msgs::Point pt;
+            pt.x = pos_pts(0, i);
+            pt.y = pos_pts(1, i);
+            pt.z = pos_pts(2, i);
+            bspline.pos_pts.push_back(pt); // 添加每个控制点到B样条消息的控制点数组中
+        }
 
-      Eigen::VectorXd knots = info->position_traj_.getKnot();
-      bspline.knots.reserve(knots.rows());
-      for (int i = 0; i < knots.rows(); ++i)
-      {
-        bspline.knots.push_back(knots(i));
-      }
+        // 获取节点向量并将其转换为ROS消息格式
+        Eigen::VectorXd knots = info->position_traj_.getKnot();
+        bspline.knots.reserve(knots.rows());
+        for (int i = 0; i < knots.rows(); ++i)
+        {
+            bspline.knots.push_back(knots(i)); // 添加每个节点到B样条消息的节点数组中
+        }
 
-      bspline_pub_.publish(bspline); // 发布B样条轨迹
+        bspline_pub_.publish(bspline); // 发布B样条轨迹
 
-      visualization_->displayOptimalList(info->position_traj_.get_control_points(), 0); // 可视化最优轨迹
+        // 可视化最优轨迹，将控制点传递给可视化模块
+        visualization_->displayOptimalList(info->position_traj_.get_control_points(), 0);
     }
 
     return plan_success; // 返回规划结果
-  }
+}
 
   // 调用紧急停止
   bool EGOReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)

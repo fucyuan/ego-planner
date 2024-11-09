@@ -305,7 +305,8 @@ do
 
     if (!flag_step_2_success) // 如果优化失败
     {
-        printf("\033[34mThis refined trajectory hits obstacles. It doesn't matter if appears occasionally. But if continuously appearing, increase parameter \"lambda_fitness\".\n\033[0m");
+        // printf("\033[34mThis refined trajectory hits obstacles. It doesn't matter if appears occasionally. But if continuously appearing, increase parameter \"lambda_fitness\".\n\033[0m");
+        ROS_WARN("This refined trajectory hits obstacles. It doesn't matter if it appears occasionally. But if it continuously appears, increase parameter \"lambda_fitness\".");
         // 提示信息：优化轨迹偶尔与障碍物相交并不重要，但如果经常出现，建议增加参数 "lambda_fitness"
 
         continous_failures_count_++; // 增加连续失败计数
@@ -483,57 +484,96 @@ do
 }
 
 
-  bool EGOPlannerManager::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector3d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
-  {
-    double t_inc;
+bool EGOPlannerManager::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector3d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
+{
+    double t_inc;  // 定义一个时间增量变量，用于在重参数化过程中计算时间增加（与原来所需要的时间）
 
-    Eigen::MatrixXd ctrl_pts; // = traj.getControlPoint()
+    Eigen::MatrixXd ctrl_pts; // 定义控制点矩阵，将用于存储轨迹的控制点
 
-    // std::cout << "ratio: " << ratio << std::endl;
-    reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
+    // std::cout << "ratio: " << ratio << std::endl; // 打印 ratio 的值（调试用，已注释掉）
+    
+    // 调用 reparamBspline 函数，对轨迹进行重参数化
+    reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);//ts===dt时间间隔
 
+    // 使用重参数化后的控制点矩阵和时间间隔重新生成 B样条曲线对象
     traj = UniformBspline(ctrl_pts, 3, ts);
 
+    // 计算时间步长 t_step，用于在轨迹上等间隔采样点
     double t_step = traj.getTimeSum() / (ctrl_pts.cols() - 3);
-    bspline_optimizer_rebound_->ref_pts_.clear();
-    for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
-      bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));
 
+    // 清空 bspline_optimizer_rebound_ 对象中的参考点列表
+    bspline_optimizer_rebound_->ref_pts_.clear();
+
+    // 遍历轨迹上的每一个时间步长，使用去Boor算法计算该时刻的轨迹点，并加入参考点列表
+    for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
+        bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));
+
+    // 调用 BsplineOptimizeTrajRefine 函数，进行轨迹优化，结果存储在 optimal_control_points
     bool success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
 
-    return success;
-  }
+    return success; // 返回优化是否成功的布尔值
+}
 
-  void EGOPlannerManager::updateTrajInfo(const UniformBspline &position_traj, const ros::Time time_now)
-  {
+
+void EGOPlannerManager::updateTrajInfo(const UniformBspline &position_traj, const ros::Time time_now)
+{
+    // 更新轨迹的起始时间，将当前时间赋值给 local_data_ 的 start_time_
     local_data_.start_time_ = time_now;
+
+    // 更新位置轨迹，将输入的 position_traj 赋值给 local_data_ 的 position_traj_
     local_data_.position_traj_ = position_traj;
+
+    // 计算速度轨迹，通过位置轨迹的导数获取速度轨迹
     local_data_.velocity_traj_ = local_data_.position_traj_.getDerivative();
+
+    // 计算加速度轨迹，通过速度轨迹的导数获取加速度轨迹
     local_data_.acceleration_traj_ = local_data_.velocity_traj_.getDerivative();
+
+    // 获取起始位置，在 De Boor 参数 t = 0.0 处评估位置轨迹，赋值给 start_pos_
     local_data_.start_pos_ = local_data_.position_traj_.evaluateDeBoorT(0.0);
+
+    // 获取轨迹总时长，通过 position_traj 调用 getTimeSum 方法获取
     local_data_.duration_ = local_data_.position_traj_.getTimeSum();
+
+    // 轨迹编号自增，更新 traj_id_，以区分不同的轨迹更新
     local_data_.traj_id_ += 1;
-  }
+}
+
 
   void EGOPlannerManager::reparamBspline(UniformBspline &bspline, vector<Eigen::Vector3d> &start_end_derivative, double ratio,
-                                         Eigen::MatrixXd &ctrl_pts, double &dt, double &time_inc)
+                                        Eigen::MatrixXd &ctrl_pts, double &dt, double &time_inc)
   {
-    double time_origin = bspline.getTimeSum();
-    int seg_num = bspline.getControlPoint().cols() - 3;
-    // double length = bspline.getLength(0.1);
-    // int seg_num = ceil(length / pp_.ctrl_pt_dist);
+      // 获取原始轨迹的总时长
+      double time_origin = bspline.getTimeSum();
 
-    bspline.lengthenTime(ratio);
-    double duration = bspline.getTimeSum();
-    dt = duration / double(seg_num);
-    time_inc = duration - time_origin;
+      // 计算轨迹的分段数量，通常为控制点数量减3（去掉两端的起始和终止节点）
+      int seg_num = bspline.getControlPoint().cols() - 3;
 
-    vector<Eigen::Vector3d> point_set;
-    for (double time = 0.0; time <= duration + 1e-4; time += dt)
-    {
-      point_set.push_back(bspline.evaluateDeBoorT(time));
-    }
-    UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
+      // 通过长度扩展时间，根据给定的比例 ratio 来调整时间间隔
+      bspline.lengthenTime(ratio);
+
+      // 获取调整后的轨迹总时长
+      double duration = bspline.getTimeSum();
+
+      // 计算新的时间间隔 dt，每段所占用的时间
+      dt = duration / double(seg_num);
+
+      // 计算时间增量 time_inc，即重参数化后的总时长与原始时长的差值
+      time_inc = duration - time_origin;
+
+      // 定义一个向量 point_set，用于存储采样点
+      vector<Eigen::Vector3d> point_set;
+
+      // 遍历轨迹的时间区间，以 dt 为步长采样轨迹上的点
+      for (double time = 0.0; time <= duration + 1e-4; time += dt)
+      {
+          // 使用去Boor算法计算给定时间点的轨迹位置，并存入 point_set
+          point_set.push_back(bspline.evaluateDeBoorT(time));
+      }
+
+      // 重新参数化轨迹，将采样点 point_set 和导数信息 start_end_derivative 转换为 B样条控制点
+      UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
   }
+
 
 } // namespace ego_planner

@@ -177,22 +177,31 @@ namespace ego_planner
   }
 
   void PlanningVisualization::displayOptimalList(Eigen::MatrixXd optimal_pts, int id)
-  {
-
+{
+    // 检查 optimal_list_pub 是否有订阅者，如果没有则直接返回，不进行可视化处理
     if (optimal_list_pub.getNumSubscribers() == 0)
     {
-      return;
+        return;
     }
 
+    // 创建一个存储 3D 点的向量 list，用于存储最佳轨迹的控制点
     vector<Eigen::Vector3d> list;
+    
+    // 将传入的 optimal_pts 矩阵中的每一列转换为 3D 点并添加到 list 中
     for (int i = 0; i < optimal_pts.cols(); i++)
     {
-      Eigen::Vector3d pt = optimal_pts.col(i).transpose();
-      list.push_back(pt);
+        Eigen::Vector3d pt = optimal_pts.col(i).transpose(); // 获取第 i 列的点并转换为 Eigen::Vector3d
+        list.push_back(pt); // 将点添加到 list 中
     }
+
+    // 定义颜色为红色，使用 RGBA 格式，其中 (1, 0, 0, 1) 表示完全不透明的红色
     Eigen::Vector4d color(1, 0, 0, 1);
+
+    // 调用 displayMarkerList 函数，将 list 中的点发布到 optimal_list_pub 主题
+    // 设置点的大小为 0.15，颜色为红色，并传递 id 作为标识符
     displayMarkerList(optimal_list_pub, list, 0.15, color, id);
-  }
+}
+
 
   void PlanningVisualization::displayAStarList(std::vector<std::vector<Eigen::Vector3d>> a_star_paths, int id /* = Eigen::Vector4d(0.5,0.5,0,1)*/)
   {

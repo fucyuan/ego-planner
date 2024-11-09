@@ -413,46 +413,67 @@ for (int i = order_; i <= i_end; ++i) // 遍历各点，排除头尾一些点
     }
   }
 
-  void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
-                                            Eigen::MatrixXd &gradient, bool falg_use_jerk /* = true*/)
-  {
-
+void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
+                                          Eigen::MatrixXd &gradient, bool falg_use_jerk /* = true*/)
+{
+    // 初始化平滑度代价为 0.0
     cost = 0.0;
 
+    // 如果启用 jerk（抖动）平滑度计算
     if (falg_use_jerk)
     {
-      Eigen::Vector3d jerk, temp_j;
+        // 定义 jerk 向量和临时变量 temp_j
+        Eigen::Vector3d jerk, temp_j;
 
-      for (int i = 0; i < q.cols() - 3; i++)
-      {
-        /* evaluate jerk */
-        jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
-        cost += jerk.squaredNorm();
-        temp_j = 2.0 * jerk;
-        /* jerk gradient */
-        gradient.col(i + 0) += -temp_j;
-        gradient.col(i + 1) += 3.0 * temp_j;
-        gradient.col(i + 2) += -3.0 * temp_j;
-        gradient.col(i + 3) += temp_j;
-      }
+        // 遍历控制点序列，计算每个段的 jerk 平滑度代价和梯度
+        for (int i = 0; i < q.cols() - 3; i++)
+        {
+            /* 计算 jerk */
+            // 使用三阶差分公式计算 jerk 向量
+            jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
+
+            // 将当前段的 jerk 平方和累加到总代价中
+            cost += jerk.squaredNorm();
+
+            // 计算当前 jerk 对应的梯度，用于后续累加到梯度矩阵中
+            temp_j = 2.0 * jerk;
+
+            /* 计算 jerk 的梯度 */
+            // 根据每个控制点对 jerk 的影响，累加梯度到相应列
+            gradient.col(i + 0) += -temp_j;
+            gradient.col(i + 1) += 3.0 * temp_j;
+            gradient.col(i + 2) += -3.0 * temp_j;
+            gradient.col(i + 3) += temp_j;
+        }
     }
+    // 否则使用加速度（acc）平滑度计算
     else
     {
-      Eigen::Vector3d acc, temp_acc;
+        // 定义加速度向量 acc 和临时变量 temp_acc
+        Eigen::Vector3d acc, temp_acc;
 
-      for (int i = 0; i < q.cols() - 2; i++)
-      {
-        /* evaluate acc */
-        acc = q.col(i + 2) - 2 * q.col(i + 1) + q.col(i);
-        cost += acc.squaredNorm();
-        temp_acc = 2.0 * acc;
-        /* acc gradient */
-        gradient.col(i + 0) += temp_acc;
-        gradient.col(i + 1) += -2.0 * temp_acc;
-        gradient.col(i + 2) += temp_acc;
-      }
+        // 遍历控制点序列，计算每个段的加速度平滑度代价和梯度
+        for (int i = 0; i < q.cols() - 2; i++)
+        {
+            /* 计算加速度 */
+            // 使用二阶差分公式计算加速度向量
+            acc = q.col(i + 2) - 2 * q.col(i + 1) + q.col(i);
+
+            // 将当前段的加速度平方和累加到总代价中
+            cost += acc.squaredNorm();
+
+            // 计算当前加速度对应的梯度，用于后续累加到梯度矩阵中
+            temp_acc = 2.0 * acc;
+
+            /* 计算加速度的梯度 */
+            // 根据每个控制点对加速度的影响，累加梯度到相应列
+            gradient.col(i + 0) += temp_acc;
+            gradient.col(i + 1) += -2.0 * temp_acc;
+            gradient.col(i + 2) += temp_acc;
+        }
     }
-  }
+}
+
 
   void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd &q, double &cost,
                                              Eigen::MatrixXd &gradient)
@@ -1070,30 +1091,43 @@ bool BsplineOptimizer::rebound_optimize()
     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
   }
 
+  
   void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double &f_combine, const int n)
-  {
+{
+    // 将优化变量 x 复制到 cps_.points 中，从 order_ * 3 开始写入 n 个元素
+    // cps_ 是控制点的结构体或类实例，其中的 points 是控制点坐标矩阵
+    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));  
 
-    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
+    /* ---------- 评估各项代价及其梯度 ---------- */
+    double f_smoothness, f_fitness, f_feasibility;  // 分别用于存储平滑度、适应度、可行性代价的值
 
-    /* ---------- evaluate cost and gradient ---------- */
-    double f_smoothness, f_fitness, f_feasibility;
-
+    // 初始化平滑度、适应度和可行性代价的梯度矩阵，尺寸为 3 行 x 控制点列数
     Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
     Eigen::MatrixXd g_fitness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
     Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.points.cols());
 
-    //time_satrt = ros::Time::now();
-
+    // 计算平滑度代价及其梯度
     calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
+    
+    // 计算适应度代价及其梯度
     calcFitnessCost(cps_.points, f_fitness, g_fitness);
+
+    // 计算可行性代价及其梯度
     calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
 
-    /* ---------- convert to solver format...---------- */
+    /* ---------- 转换为优化器可用的格式 ---------- */
+    // 计算加权后的总代价函数值，结合平滑度、适应度和可行性代价
     f_combine = lambda1_ * f_smoothness + lambda4_ * f_fitness + lambda3_ * f_feasibility;
+
+    // 打印各个代价的值以及组合代价（用于调试，可注释掉）
     // printf("origin %f %f %f %f\n", f_smoothness, f_fitness, f_feasibility, f_combine);
 
-    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness + lambda3_ * g_feasibility;
+    // 计算加权后的梯度矩阵 grad_3D，将各梯度乘以相应的权重
+    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness + lambda3_ * g_feasibility;  
+
+    // 将 grad_3D 的值复制到 grad 数组，从 order_ * 3 开始，大小为 n 个元素
     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
-  }
+}
+
 
 } // namespace ego_planner

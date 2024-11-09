@@ -48,16 +48,21 @@ void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int 
 
   Eigen::VectorXd UniformBspline::getKnot() { return this->u_; }
 
-  bool UniformBspline::getTimeSpan(double &um, double &um_p)
-  {
+ bool UniformBspline::getTimeSpan(double &um, double &um_p)
+{
+    // 检查条件是否满足：如果 p_ 超过了 u_ 的行数，或者 m_ - p_ 超过了 u_ 的行数
+    // 如果条件不满足，返回 false，表示时间跨度无法获取
     if (p_ > u_.rows() || m_ - p_ > u_.rows())
-      return false;
+        return false;
 
+    // 将 u_ 向量中索引为 p_ 和 m_ - p_ 的值分别赋给 um 和 um_p
     um = u_(p_);
     um_p = u_(m_ - p_);
 
+    // 如果条件满足，返回 true，表示成功获取了时间跨度
     return true;
-  }
+}
+
 
   Eigen::MatrixXd UniformBspline::getControlPoint() { return control_points_; }
 
@@ -128,13 +133,14 @@ void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int 
 
   double UniformBspline::getInterval() { return interval_; }
 
-  void UniformBspline::setPhysicalLimits(const double &vel, const double &acc, const double &tolerance)
-  {
-    limit_vel_ = vel;
-    limit_acc_ = acc;
-    limit_ratio_ = 1.1;
-    feasibility_tolerance_ = tolerance;
-  }
+void UniformBspline::setPhysicalLimits(const double &vel, const double &acc, const double &tolerance)
+{
+    limit_vel_ = vel;                  // 设置速度限制，将输入参数vel赋值给成员变量limit_vel_
+    limit_acc_ = acc;                  // 设置加速度限制，将输入参数acc赋值给成员变量limit_acc_
+    limit_ratio_ = 1.1;                // 设置限制比例，固定为1.1
+    feasibility_tolerance_ = tolerance; // 设置可行性容差，将输入参数tolerance赋值给成员变量feasibility_tolerance_
+}
+
 
 bool UniformBspline::checkFeasibility(double &ratio, bool show)
 {
@@ -201,18 +207,29 @@ bool UniformBspline::checkFeasibility(double &ratio, bool show)
 }
 
 
-  void UniformBspline::lengthenTime(const double &ratio)
-  {
+void UniformBspline::lengthenTime(const double &ratio)
+{
+    // 定义第一个固定节点位置
     int num1 = 5;
+
+    // 定义最后一个固定节点位置，等于结点数组的行数减1再减去5
     int num2 = getKnot().rows() - 1 - 5;
 
+    // 计算总时间增量 delta_t，根据比例 ratio 计算出扩展后的时间增量
     double delta_t = (ratio - 1.0) * (u_(num2) - u_(num1));
+
+    // 计算每一段时间增量 t_inc
     double t_inc = delta_t / double(num2 - num1);
+
+    // 遍历中间的节点，从 num1 + 1 到 num2，将这些节点的时间按照 t_inc 递增
     for (int i = num1 + 1; i <= num2; ++i)
-      u_(i) += double(i - num1) * t_inc;
+        u_(i) += double(i - num1) * t_inc;
+
+    // 遍历 num2 之后的节点，直接增加总的 delta_t 时间增量
     for (int i = num2 + 1; i < u_.rows(); ++i)
-      u_(i) += delta_t;
-  }
+        u_(i) += delta_t;
+}
+
 
 
 void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
